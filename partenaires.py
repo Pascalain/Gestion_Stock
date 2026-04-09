@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-import os
+from streamlit_gsheets import GSheetsConnection
 
 st.set_page_config(page_title="Gestion Stocks - Multi-Boutiques", layout="wide")
 
