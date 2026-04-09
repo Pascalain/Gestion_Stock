@@ -1,153 +1,152 @@
 import streamlit as st
+
 import pandas as pd
 
-# --- CONFIGURATION ---
-st.set_page_config(page_title="Gestion Stocks & Commandes", layout="wide")
 
-# --- INITIALISATION DES DONNÉES (Mémoire Session) ---
-if "df_stocks" not in st.session_state:
-    data = {
-        "Partenaire": ["PASCALAIN", "PASCALAIN", "AGNEAU DU LIMOUSIN", "AGNEAU DU LIMOUSIN"],
-        "Produit": ["Jambon Blanc", "Saucisson Sec", "Gigot d'Agneau", "Côtelettes"],
-        "Cible_Feytiat": [10, 15, 5, 20],
-        "Cible_StLeo": [8, 12, 4, 15],
-        "Reste_Feytiat": [10, 15, 5, 20],
-        "Reste_StLeo": [8, 12, 4, 15],
-        "Prix_HT": [12.50, 18.00, 25.00, 15.00],
-        "Afficher": [True, True, True, True]
-    }
-    st.session_state.df_stocks = pd.DataFrame(data)
+# Configuration de la page
 
-# --- NAVIGATION LATERALE (SIDEBAR) ---
-st.sidebar.title("🏪 Menu Navigation")
-page = st.sidebar.radio("Aller vers :", [
-    "📊 Récapitulatif Commandes", 
-    "🏬 Stock Feytiat", 
-    "🏬 Stock St-Léonard", 
-    "⚙️ Administration"
-])
+st.set_page_config(page_title="Gestion Stock Multi-Boutiques", layout="wide")
 
-# --- 1. PAGE RÉCAPITULATIF (AFFICHE UNIQUEMENT LES RUPTURES) ---
-if page == "📊 Récapitulatif Commandes":
-    st.title("📋 État des Commandes")
-    df_active = st.session_state.df_stocks[st.session_state.df_stocks["Afficher"] == True].copy()
+
+# --- SIMULATION DE LA BASE DE DONNÉES ---
+
+# Dans une version réelle, on utiliserait un fichier Excel ou une vraie base de données
+
+if 'db' not in st.session_state:
+
+    st.session_state.db = pd.DataFrame([
+
+        {"Partenaire": "FERME DE BEAUREGARD", "Produit": "Grillons de canard", "Cible_Feytiat": 20, "Cible_StLeo": 15, "Reste_Feytiat": 20, "Reste_StLeo": 15, "Contact": "05 55 70 01 90"},
+
+        {"Partenaire": "FERME DE BEAUREGARD", "Produit": "Rillettes de canard", "Cible_Feytiat": 20, "Cible_StLeo": 10, "Reste_Feytiat": 3, "Reste_StLeo": 8, "Contact": "05 55 70 01 90"},
+
+        {"Partenaire": "CLARISSE CONFITURE", "Produit": "Confiture Fraise", "Cible_Feytiat": 12, "Cible_StLeo": 12, "Reste_Feytiat": 12, "Reste_StLeo": 12, "Contact": "05 55 47 37 26"},
+
+    ])
+
+
+# --- NAVIGATION ---
+
+st.sidebar.title("Menu Gestion")
+
+page = st.sidebar.radio("Aller vers :", ["📍 Boutique Feytiat", "📍 Boutique St-Léonard", "📊 Récapitulatif & Commande", "⚙️ Paramètres (Ajouter Produits)"])
+
+
+# --- PAGE FEYTIAT ---
+
+if page == "📍 Boutique Feytiat":
+
+    st.title("Inventaire - Magasin de Feytiat")
+
+    for i, row in st.session_state.db.iterrows():
+
+        col1, col2, col3 = st.columns([3, 2, 2])
+
+        with col1:
+
+            st.write(f"**{row['Produit']}** ({row['Partenaire']})")
+
+        with col2:
+
+            st.write(f"Cible: {row['Cible_Feytiat']}")
+
+        with col3:
+
+            # Mise à jour du stock restant
+
+            new_reste = st.number_input(f"Reste à Feytiat", value=int(row['Reste_Feytiat']), key=f"fey_{i}")
+
+            st.session_state.db.at[i, 'Reste_Feytiat'] = new_reste
+
+    st.success("Stocks Feytiat mis à jour automatiquement.")
+
+
+# --- PAGE ST LEONARD ---
+
+elif page == "📍 Boutique St-Léonard":
+
+    st.title("Inventaire - Magasin de St-Léonard")
+
+    for i, row in st.session_state.db.iterrows():
+
+        col1, col2, col3 = st.columns([3, 2, 2])
+
+        with col1:
+
+            st.write(f"**{row['Produit']}** ({row['Partenaire']})")
+
+        with col2:
+
+            st.write(f"Cible: {row['Cible_StLeo']}")
+
+        with col3:
+
+            new_reste = st.number_input(f"Reste à St-Léonard", value=int(row['Reste_StLeo']), key=f"stleo_{i}")
+
+            st.session_state.db.at[i, 'Reste_StLeo'] = new_reste
+
+    st.success("Stocks St-Léonard mis à jour automatiquement.")
+
+
+# --- PAGE RÉCAPITULATIF ---
+
+elif page == "📊 Récapitulatif & Commande":
+
+    st.title("Tableau de Commande Global")
+
     
-    # Calculs des besoins
-    df_active["Besoin_Feytiat"] = (df_active["Cible_Feytiat"] - df_active["Reste_Feytiat"]).clip(lower=0)
-    df_active["Besoin_StLeo"] = (df_active["Cible_StLeo"] - df_active["Reste_StLeo"]).clip(lower=0)
-    df_active["Total_A_Commander"] = df_active["Besoin_Feytiat"] + df_active["Besoin_StLeo"]
 
-    partenaires = df_active["Partenaire"].unique()
-    for p in partenaires:
-        df_p = df_active[(df_active["Partenaire"] == p) & (df_active["Total_A_Commander"] > 0)]
-        if not df_p.empty:
-            with st.expander(f"🛒 À commander chez : {p}", expanded=True):
-                st.table(df_p[["Produit", "Besoin_Feytiat", "Besoin_StLeo", "Total_A_Commander"]])
+    df = st.session_state.db.copy()
 
-# --- 2. PAGE FEYTIAT (UN TABLEAU PAR PARTENAIRE) ---
-elif page == "🏬 Stock Feytiat":
-    st.title("📍 Inventaire Feytiat")
-    st.info("Modifiez les quantités dans les tableaux et cliquez sur le bouton en bas pour enregistrer.")
+    df['Manquant_Feytiat'] = df['Cible_Feytiat'] - df['Reste_Feytiat']
+
+    df['Manquant_StLeo'] = df['Cible_StLeo'] - df['Reste_StLeo']
+
+    df['TOTAL_A_COMMANDER'] = df['Manquant_Feytiat'] + df['Manquant_StLeo']
+
     
-    df_fey = st.session_state.df_stocks[st.session_state.df_stocks["Afficher"] == True].copy()
-    partenaires = df_fey["Partenaire"].unique()
+
+    # On ne garde que ce qu'il faut commander
+
+    a_commander = df[df['TOTAL_A_COMMANDER'] > 0]
+
     
-    # Dictionnaire pour stocker les modifications de chaque tableau
-    all_edited_fey = {}
 
-    for p in partenaires:
-        with st.expander(f"📦 Produits de : {p}", expanded=True):
-            df_p = df_fey[df_fey["Partenaire"] == p]
-            
-            edited = st.data_editor(
-                df_p[["Produit", "Cible_Feytiat", "Reste_Feytiat"]],
-                column_config={
-                    "Reste_Feytiat": st.column_config.NumberColumn("Stock Restant", min_value=0, step=1),
-                    "Cible_Feytiat": st.column_config.NumberColumn("Objectif", disabled=True),
-                    "Produit": st.column_config.TextColumn(disabled=True),
-                },
-                use_container_width=True,
-                hide_index=True,
-                key=f"editor_fey_{p}"
-            )
-            all_edited_fey[p] = edited
+    if not a_commander.empty:
 
-    if st.button("💾 Enregistrer TOUS les stocks Feytiat", type="primary"):
-        for p, edited_df in all_edited_fey.items():
-            for _, row in edited_df.iterrows():
-                idx = st.session_state.df_stocks[(st.session_state.df_stocks["Partenaire"] == p) & 
-                                                (st.session_state.df_stocks["Produit"] == row["Produit"])].index
-                st.session_state.df_stocks.loc[idx, "Reste_Feytiat"] = row["Reste_Feytiat"]
-        st.success("✅ Stocks Feytiat mis à jour !")
-        st.rerun()
+        st.table(a_commander[['Partenaire', 'Produit', 'Manquant_Feytiat', 'Manquant_StLeo', 'TOTAL_A_COMMANDER', 'Contact']])
 
-# --- 3. PAGE ST-LÉONARD (UN TABLEAU PAR PARTENAIRE) ---
-elif page == "🏬 Stock St-Léonard":
-    st.title("📍 Inventaire Saint-Léonard")
-    st.info("Modifiez les quantités dans les tableaux et cliquez sur le bouton en bas pour enregistrer.")
-    
-    df_leo = st.session_state.df_stocks[st.session_state.df_stocks["Afficher"] == True].copy()
-    partenaires = df_leo["Partenaire"].unique()
-    
-    all_edited_leo = {}
+        st.info("💡 Ce tableau vous donne le total pour la commande ET le détail pour préparer le dispatch une fois reçu.")
 
-    for p in partenaires:
-        with st.expander(f"📦 Produits de : {p}", expanded=True):
-            df_p = df_leo[df_leo["Partenaire"] == p]
-            
-            edited = st.data_editor(
-                df_p[["Produit", "Cible_StLeo", "Reste_StLeo"]],
-                column_config={
-                    "Reste_StLeo": st.column_config.NumberColumn("Stock Restant", min_value=0, step=1),
-                    "Cible_StLeo": st.column_config.NumberColumn("Objectif", disabled=True),
-                    "Produit": st.column_config.TextColumn(disabled=True),
-                },
-                use_container_width=True,
-                hide_index=True,
-                key=f"editor_leo_{p}"
-            )
-            all_edited_leo[p] = edited
+    else:
 
-    if st.button("💾 Enregistrer TOUS les stocks St-Léonard", type="primary"):
-        for p, edited_df in all_edited_leo.items():
-            for _, row in edited_df.iterrows():
-                idx = st.session_state.df_stocks[(st.session_state.df_stocks["Partenaire"] == p) & 
-                                                (st.session_state.df_stocks["Produit"] == row["Produit"])].index
-                st.session_state.df_stocks.loc[idx, "Reste_StLeo"] = row["Reste_StLeo"]
-        st.success("✅ Stocks Saint-Léonard mis à jour !")
-        st.rerun()
+        st.write("✅ Tous les stocks sont au maximum. Rien à commander.")
 
-# --- 4. PAGE ADMINISTRATION ---
-elif page == "⚙️ Administration":
-    st.title("🛠 Administration")
-    
-    with st.expander("➕ Ajouter un nouveau produit"):
-        with st.form("add_form", clear_on_submit=True):
-            c1, c2 = st.columns(2)
-            part = c1.text_input("Partenaire")
-            prod = c2.text_input("Produit")
-            c3, c4, c5 = st.columns(3)
-            cf = c3.number_input("Cible Feytiat", min_value=0)
-            cs = c4.number_input("Cible St-Leo", min_value=0)
-            px = c5.number_input("Prix HT", min_value=0.0)
-            if st.form_submit_button("Enregistrer"):
-                new_line = pd.DataFrame([{
-                    "Partenaire": part.upper(), "Produit": prod,
-                    "Cible_Feytiat": cf, "Cible_StLeo": cs,
-                    "Reste_Feytiat": cf, "Reste_StLeo": cs,
-                    "Prix_HT": px, "Afficher": True
-                }])
-                st.session_state.df_stocks = pd.concat([st.session_state.df_stocks, new_line], ignore_index=True)
-                st.rerun()
 
-    st.divider()
-    st.subheader("👀 Visibilité du catalogue")
-    edited_vis = st.data_editor(
-        st.session_state.df_stocks[["Partenaire", "Produit", "Afficher"]],
-        use_container_width=True,
-        hide_index=True,
-        key="admin_editor"
-    )
-    if st.button("Appliquer les changements de visibilité"):
-        st.session_state.df_stocks["Afficher"] = edited_vis["Afficher"]
-        st.rerun()
+# --- PAGE PARAMÈTRES ---
+
+elif page == "⚙️ Paramètres (Ajouter Produits)":
+
+    st.title("Ajouter un nouveau produit / partenaire")
+
+    with st.form("new_product"):
+
+        part = st.text_input("Nom du Partenaire")
+
+        prod = st.text_input("Nom du Produit")
+
+        c_fey = st.number_input("Stock Cible Feytiat", value=20)
+
+        c_st = st.number_input("Stock Cible St-Léonard", value=20)
+
+        cont = st.text_input("Contact (Tél/Mail)")
+
+        
+
+        if st.form_submit_button("Ajouter à la liste"):
+
+            new_entry = {"Partenaire": part, "Produit": prod, "Cible_Feytiat": c_fey, "Cible_StLeo": c_st, "Reste_Feytiat": c_fey, "Reste_StLeo": c_st, "Contact": cont}
+
+            st.session_state.db = pd.concat([st.session_state.db, pd.DataFrame([new_entry])], ignore_index=True)
+
+            st.experimental_rerun() 
