@@ -4,7 +4,9 @@ import os
 
 st.set_page_config(page_title="Gestion Stocks - Multi-Boutiques", layout="wide")
 
-DB_FILE = "stocks_data.csv"
+# --- CONNEXION GOOGLE SHEETS ---
+# On remplace DB_FILE par la connexion
+conn = st.connection("gsheets", type=GSheetsConnection)
 
 # --- CHARGEMENT DES DONNÉES ---
 if os.path.exists(DB_FILE):
