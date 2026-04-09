@@ -5,27 +5,16 @@ from streamlit_gsheets import GSheetsConnection
 st.set_page_config(page_title="Gestion Stocks - Multi-Boutiques", layout="wide")
 
 # --- CONNEXION GOOGLE SHEETS ---
-# On remplace DB_FILE par la connexion
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 # --- CHARGEMENT DES DONNÉES ---
-if os.path.exists(DB_FILE):
-    df_db = pd.read_csv(DB_FILE)
-    if "Prix_HT" not in df_db.columns:
-        df_db["Prix_HT"] = 0.0
-else:
-    data = {
-        "Partenaire": ["FERME DE BEAUREGARD"],
-        "Produit": ["Rillettes de canard"],
-        "Cible_Feytiat": [20], "Cible_StLeo": [10],
-        "Reste_Feytiat": [20], "Reste_StLeo": [10],
-        "Prix_HT": [4.50], "Contact": ["05 55 70 01 90"]
-    }
-    df_db = pd.DataFrame(data)
-    df_db.to_csv(DB_FILE, index=False)
+# On lit directement le Google Sheet. ttl="0" permet de voir les modifs immédiatement
+df_db = conn.read(ttl="0")
 
 def save_data(dataframe):
-    dataframe.to_csv(DB_FILE, index=False)
+    # Cette fonction écrase les données du Google Sheet avec le nouveau tableau
+    conn.update(data=dataframe)
+    st.cache_data.clear() # On vide le cache pour forcer la mise à jour visuelle
 
 # --- NAVIGATION ---
 st.sidebar.title("📦 Menu de Gestion")
